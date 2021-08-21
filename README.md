@@ -97,7 +97,7 @@ cargo run
     - [ ] Grid for albums and artists
     - [ ] Robust active/inactive menu visualization
     - [ ] Save last route, volume, playback state
-
+- [ ] Free Account
 ##### Development
 
 Contributions are very welcome! Project structure:
