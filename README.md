@@ -8,7 +8,7 @@ Fast Spotify client with native GUI, without Electron, built in Rust. Very early
 
 ##### Pre-built binaries
 
-GitHub Actions automatically runs when new commits are pushed to `master`. To download prebuilt binaries for x86_64 macOS, Windows or Ubuntu, [go to the newest successfully built action](https://nightly.link/jpochyla/psst/workflows/build/master).
+GitHub Actions automatically runs when new commits are pushed to `master`. To download prebuilt binaries for x86_64 macOS, Windows or Ubuntu, [go to the newest successfully built action](https://nightly.link/isqt01/psst/workflows/build/master).
 
 ##### Linux
 
