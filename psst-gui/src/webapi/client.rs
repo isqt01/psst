@@ -13,7 +13,8 @@ use druid::{
 use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use psst_core::{
-    access_token::TokenProvider, session::SessionService, util::default_ureq_agent_builder,
+    session::{access_token::TokenProvider, SessionService},
+    util::default_ureq_agent_builder,
 };
 use serde::{de::DeserializeOwned, Deserialize};
 use std::{
@@ -123,7 +124,7 @@ impl WebApi {
         if let Some(file) = self.cache.get(bucket, key) {
             let cached_at = file.metadata()?.modified()?;
             let value = serde_json::from_reader(file)?;
-            Ok(Cached::cached(value, cached_at))
+            Ok(Cached::new(value, cached_at))
         } else {
             let response = Self::with_retry(|| Ok(request.clone().call()?))?;
             let body = {
