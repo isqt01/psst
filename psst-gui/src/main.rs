@@ -33,7 +33,6 @@ fn main() {
 
     let config = Config::load().unwrap_or_default();
     let state = AppState::default_with_config(config);
-
     WebApi::new(
         state.session.clone(),
         Config::proxy().as_deref(),
@@ -48,6 +47,9 @@ fn main() {
         let window = ui::main_window();
         delegate = Delegate::with_main(window.id);
         launcher = AppLauncher::with_window(window).configure_env(ui::theme::setup);
+
+        // Load user's local tracks for the WebApi.
+        WebApi::global().load_local_tracks(state.config.username().unwrap());
     } else {
         // No configured credentials, open the account setup.
         let window = ui::account_setup_window();

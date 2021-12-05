@@ -97,6 +97,13 @@ impl Config {
         AppDirs::new(Some(APP_NAME), USE_XDG_ON_MACOS)
     }
 
+    pub fn spotify_local_files_file(username: &str) -> Option<PathBuf> {
+        AppDirs::new(Some("spotify"), false).map(|dir| {
+            let path = format!("Users/{}-user/local-files.bnk", username);
+            dir.config_dir.join(path)
+        })
+    }
+
     pub fn cache_dir() -> Option<PathBuf> {
         Self::app_dirs().map(|dirs| dirs.cache_dir)
     }
@@ -134,6 +141,10 @@ impl Config {
 
     pub fn store_credentials(&mut self, credentials: Credentials) {
         self.credentials.replace(credentials);
+    }
+
+    pub fn username(&self) -> Option<&str> {
+        self.credentials.as_ref().map(|c| c.username.as_str())
     }
 
     pub fn session(&self) -> SessionConfig {

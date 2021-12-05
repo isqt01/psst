@@ -8,20 +8,24 @@ use druid::{
         Controller, ControllerHost, CrossAxisAlignment, Flex, Label, List, ListIter, Painter,
     },
     Data, Env, Event, EventCtx, Lens, LensExt, LocalizedString, Menu, MenuItem, RenderContext,
-    TextAlignment, Widget, WidgetExt,
+    Selector, TextAlignment, Widget, WidgetExt,
 };
 
 use crate::{
     cmd,
     data::{
-        Album, AppState, ArtistLink, ArtistTracks, CommonCtx, Library, Nav, PlaybackOrigin,
-        PlaybackPayload, PlaylistTracks, Recommendations, RecommendationsRequest, SavedTracks,
-        SearchResults, Track, WithCtx,
+        Album, AppState, ArtistLink, ArtistTracks, CommonCtx, FindQuery, Library, MatchFindQuery,
+        Nav, PlaybackOrigin, PlaybackPayload, PlaylistAddTrack, PlaylistTracks, Recommendations,
+        RecommendationsRequest, SavedTracks, SearchResults, Track, WithCtx,
     },
+    ui::playlist,
     widget::MyWidgetExt,
 };
 
-use super::{library, theme, utils};
+use super::{
+    find::{Find, Findable},
+    library, theme, utils,
+};
 
 #[derive(Copy, Clone)]
 pub struct TrackDisplay {
@@ -48,7 +52,19 @@ pub fn tracklist_widget<T>(display: TrackDisplay) -> impl Widget<WithCtx<T>>
 where
     T: TrackIter + Data,
 {
-    ControllerHost::new(List::new(move || track_widget(display)), PlayController)
+    let list = List::new(move || track_widget(display));
+    ControllerHost::new(list, PlayController)
+}
+
+pub fn findable_tracklist_widget<T>(
+    display: TrackDisplay,
+    selector: Selector<Find>,
+) -> impl Widget<WithCtx<T>>
+where
+    T: TrackIter + Data,
+{
+    let list = List::new(move || Findable::new(track_widget(display), selector));
+    ControllerHost::new(list, PlayController)
 }
 
 pub trait TrackIter {
@@ -164,6 +180,14 @@ struct TrackRow {
     origin: PlaybackOrigin,
     position: usize,
     is_playing: bool,
+}
+
+impl MatchFindQuery for TrackRow {
+    fn matches_query(&self, q: &FindQuery) -> bool {
+        q.matches_str(&self.track.name)
+            || self.track.album.iter().any(|a| q.matches_str(&a.name))
+            || self.track.artists.iter().any(|a| q.matches_str(&a.name))
+    }
 }
 
 struct PlayController;
@@ -381,6 +405,23 @@ pub fn track_menu(track: &Arc<Track>, library: &Arc<Library>) -> Menu<AppState> 
             .command(library::SAVE_TRACK.with(track.clone())),
         );
     }
+
+    let mut playlist_menu = Menu::new(
+        LocalizedString::new("menu-item-add-to-playlist").with_placeholder("Add to Playlist"),
+    );
+    for playlist in library.writable_playlists() {
+        playlist_menu = playlist_menu.entry(
+            MenuItem::new(
+                LocalizedString::new("menu-item-save-to-playlist")
+                    .with_placeholder(format!("{}", playlist.name)),
+            )
+            .command(playlist::ADD_TRACK.with(PlaylistAddTrack {
+                link: playlist.link(),
+                track_id: track.id,
+            })),
+        );
+    }
+    menu = menu.entry(playlist_menu);
 
     menu
 }

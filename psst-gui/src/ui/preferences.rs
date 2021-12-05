@@ -16,6 +16,7 @@ use crate::{
     data::{
         AppState, AudioQuality, Authentication, Config, Preferences, PreferencesTab, Promise, Theme,
     },
+    webapi::WebApi,
     widget::{icons, Async, Border, MyWidgetExt},
 };
 
@@ -279,6 +280,9 @@ impl<W: Widget<AppState>> Controller<AppState, W> for Authenticate {
                 // Store the retrieved credentials into the config.
                 let result = cmd.get_unchecked(Self::RESPONSE);
                 let result = result.to_owned().map(|credentials| {
+                    // Load user's local tracks for the WebApi.
+                    WebApi::global().load_local_tracks(&credentials.username);
+                    // Save the credentials into config.
                     data.config.store_credentials(credentials);
                     data.config.save();
                 });

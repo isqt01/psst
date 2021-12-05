@@ -1,7 +1,8 @@
 mod album;
 mod artist;
-mod config;
+pub mod config;
 mod ctx;
+mod find;
 mod id;
 mod nav;
 mod playback;
@@ -11,9 +12,17 @@ mod recommend;
 mod search;
 mod track;
 mod user;
-mod utils;
+pub mod utils;
 
-use std::{mem, sync::Arc, time::Duration};
+use std::{
+    fmt::Display,
+    mem,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
 use druid::{
     im::{HashSet, Vector},
@@ -26,18 +35,19 @@ pub use crate::data::{
     artist::{Artist, ArtistAlbums, ArtistDetail, ArtistLink, ArtistTracks},
     config::{AudioQuality, Authentication, Config, Preferences, PreferencesTab, Theme},
     ctx::Ctx,
-    nav::{Nav, SpotifyUrl},
+    find::{FindQuery, Finder, MatchFindQuery},
+    nav::{Nav, Route, SpotifyUrl},
     playback::{
         NowPlaying, Playback, PlaybackOrigin, PlaybackPayload, PlaybackState, QueueBehavior,
         QueuedTrack,
     },
-    playlist::{Playlist, PlaylistDetail, PlaylistLink, PlaylistTracks},
+    playlist::{Playlist, PlaylistAddTrack, PlaylistDetail, PlaylistLink, PlaylistTracks},
     promise::{Promise, PromiseState},
     recommend::{
         Range, Recommend, Recommendations, RecommendationsKnobs, RecommendationsParams,
         RecommendationsRequest, Toggled,
     },
-    search::{Search, SearchResults},
+    search::{Search, SearchResults, SearchTopic},
     track::{AudioAnalysis, AudioSegment, TimeInterval, Track, TrackId},
     user::UserProfile,
     utils::{Cached, Float64, Image, Page},
@@ -48,7 +58,7 @@ pub struct AppState {
     #[data(ignore)]
     pub session: SessionService,
 
-    pub route: Nav,
+    pub nav: Nav,
     pub history: Vector<Nav>,
     pub config: Config,
     pub preferences: Preferences,
@@ -60,13 +70,14 @@ pub struct AppState {
     pub playlist_detail: PlaylistDetail,
     pub library: Arc<Library>,
     pub common_ctx: Arc<CommonCtx>,
-    pub user_profile: Promise<UserProfile>,
     pub personalized: Personalized,
+    pub alerts: Vector<Alert>,
 }
 
 impl AppState {
     pub fn default_with_config(config: Config) -> Self {
         let library = Arc::new(Library {
+            user_profile: Promise::Empty,
             saved_albums: Promise::Empty,
             saved_tracks: Promise::Empty,
             playlists: Promise::Empty,
@@ -84,7 +95,7 @@ impl AppState {
         };
         Self {
             session: SessionService::empty(),
-            route: Nav::Home,
+            nav: Nav::Home,
             history: Vector::new(),
             config,
             preferences: Preferences {
@@ -117,21 +128,22 @@ impl AppState {
             playlist_detail: PlaylistDetail {
                 playlist: Promise::Empty,
                 tracks: Promise::Empty,
+                finder: Default::default(),
             },
             library,
             common_ctx,
-            user_profile: Promise::Empty,
             personalized: Personalized {
                 made_for_you: Promise::Empty,
             },
+            alerts: Vector::new(),
         }
     }
 }
 
 impl AppState {
     pub fn navigate(&mut self, nav: &Nav) {
-        if &self.route != nav {
-            let previous = mem::replace(&mut self.route, nav.to_owned());
+        if &self.nav != nav {
+            let previous = mem::replace(&mut self.nav, nav.to_owned());
             self.history.push_back(previous);
             self.config.last_route.replace(nav.to_owned());
             self.config.save();
@@ -142,7 +154,7 @@ impl AppState {
         if let Some(nav) = self.history.pop_back() {
             self.config.last_route.replace(nav.clone());
             self.config.save();
-            self.route = nav;
+            self.nav = nav;
         }
     }
 }
@@ -227,8 +239,31 @@ impl AppState {
     }
 }
 
+impl AppState {
+    pub fn info_alert(&mut self, message: impl Display) {
+        self.alerts.push_back(Alert {
+            message: message.to_string().into(),
+            style: AlertStyle::Info,
+            id: Alert::fresh_id(),
+        });
+    }
+
+    pub fn error_alert(&mut self, message: impl Display) {
+        self.alerts.push_back(Alert {
+            message: message.to_string().into(),
+            style: AlertStyle::Error,
+            id: Alert::fresh_id(),
+        });
+    }
+
+    pub fn dismiss_alert(&mut self, id: usize) {
+        self.alerts.retain(|a| a.id != id);
+    }
+}
+
 #[derive(Clone, Data, Lens)]
 pub struct Library {
+    pub user_profile: Promise<UserProfile>,
     pub playlists: Promise<Vector<Playlist>>,
     pub saved_albums: Promise<SavedAlbums>,
     pub saved_tracks: Promise<SavedTracks>,
@@ -264,10 +299,10 @@ impl Library {
         }
     }
 
-    pub fn remove_album(&mut self, album_id: &Arc<str>) {
+    pub fn remove_album(&mut self, album_id: &str) {
         if let Some(saved) = self.saved_albums.resolved_mut() {
             saved.set.remove(album_id);
-            saved.albums.retain(|a| &a.id != album_id);
+            saved.albums.retain(|a| a.id.as_ref() != album_id);
         }
     }
 
@@ -276,6 +311,33 @@ impl Library {
             saved.set.contains(&album.id)
         } else {
             false
+        }
+    }
+
+    pub fn writable_playlists(&self) -> Vec<&Playlist> {
+        if let Some(saved) = self.playlists.resolved() {
+            saved
+                .iter()
+                .filter(|playlist| {
+                    self.user_profile
+                        .resolved()
+                        .map(|user| playlist.owner.id == user.id)
+                        .unwrap_or(false)
+                        || playlist.collaborative
+                })
+                .collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    pub fn increment_playlist_track_count(&mut self, link: &PlaylistLink) {
+        if let Some(saved) = self.playlists.resolved_mut() {
+            for playlist in saved.iter_mut() {
+                if playlist.id == link.id {
+                    playlist.track_count += 1;
+                }
+            }
         }
     }
 }
@@ -326,4 +388,25 @@ pub type WithCtx<T> = Ctx<Arc<CommonCtx>, T>;
 #[derive(Clone, Data, Lens)]
 pub struct Personalized {
     pub made_for_you: Promise<Vector<Playlist>>,
+}
+
+static ALERT_ID: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(Clone, Data, Lens)]
+pub struct Alert {
+    pub id: usize,
+    pub message: Arc<str>,
+    pub style: AlertStyle,
+}
+
+impl Alert {
+    fn fresh_id() -> usize {
+        ALERT_ID.fetch_add(1, Ordering::SeqCst)
+    }
+}
+
+#[derive(Clone, Data, Eq, PartialEq)]
+pub enum AlertStyle {
+    Error,
+    Info,
 }

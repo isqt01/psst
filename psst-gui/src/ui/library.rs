@@ -65,8 +65,12 @@ pub fn saved_tracks_widget() -> impl Widget<AppState> {
                 library.add_track(t);
             });
         },
-        |_, _, _| {
-            // TODO: Handle failure.
+        |_, data, (_, r)| {
+            if let Err(err) = r {
+                data.error_alert(err);
+            } else {
+                data.info_alert("Track added to library.")
+            }
         },
     )
     .on_command_async(
@@ -77,8 +81,12 @@ pub fn saved_tracks_widget() -> impl Widget<AppState> {
                 library.remove_track(&i);
             });
         },
-        |_, _, _| {
-            // TODO: Handle failure.
+        |_, data, (_, r)| {
+            if let Err(err) = r {
+                data.error_alert(err);
+            } else {
+                data.info_alert("Track removed from library.")
+            }
         },
     )
 }
@@ -118,8 +126,12 @@ pub fn saved_albums_widget() -> impl Widget<AppState> {
                 library.add_album(a);
             });
         },
-        |_, _, _| {
-            // TODO: Handle failure.
+        |_, data, (_, r)| {
+            if let Err(err) = r {
+                data.error_alert(err);
+            } else {
+                data.info_alert("Album added to library.");
+            }
         },
     )
     .on_command_async(
@@ -130,8 +142,12 @@ pub fn saved_albums_widget() -> impl Widget<AppState> {
                 library.remove_album(&l.id);
             });
         },
-        |_, _, _| {
-            // TODO: Handle failure.
+        |_, data, (_, r)| {
+            if let Err(err) = r {
+                data.error_alert(err);
+            } else {
+                data.info_alert("Album removed from library.");
+            }
         },
     )
 }

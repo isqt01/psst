@@ -31,12 +31,13 @@ impl AudioOutput {
 
         let (callback_send, callback_recv) = bounded(16);
 
-        let handle = Stream::spawn_default({
+        let handle = Stream::spawn_with_default_cap("audio_output", {
             let config = supported.config();
             // TODO: Support additional sample formats.
             move |this| Stream::open(device, config, callback_recv, this).unwrap()
         });
         let sink = AudioSink {
+            channel_count: supported.channels(),
             sample_rate: supported.sample_rate(),
             stream_send: handle.sender(),
             callback_send,
@@ -75,12 +76,17 @@ impl AudioOutput {
 
 #[derive(Clone)]
 pub struct AudioSink {
+    channel_count: cpal::ChannelCount,
     sample_rate: cpal::SampleRate,
     callback_send: Sender<CallbackMsg>,
     stream_send: Sender<StreamMsg>,
 }
 
 impl AudioSink {
+    pub fn channel_count(&self) -> usize {
+        self.channel_count as usize
+    }
+
     pub fn sample_rate(&self) -> u32 {
         self.sample_rate.0
     }
