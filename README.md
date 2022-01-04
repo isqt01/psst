@@ -42,6 +42,7 @@ Release build:
 ```shell
 git submodule update --recursive --init
 cargo build --release
+# Use `cargo bundle --release` for building the installation bundle (i.e. macOS .app)
 ```
 
 ##### Running and configuration
@@ -49,7 +50,7 @@ cargo build --release
 ```shell
 cd psst-gui
 cargo run
-# Use cargo run --release for the release build.
+# Use `cargo run --release` for the release build.
 ```
 
 ##### Roadmap
@@ -105,10 +106,14 @@ cargo run
 
 Contributions are very welcome! Project structure:
 
-- `/psst-cli` - Example CLI that plays a track.  Credentials need to be configured in the code.
 - `/psst-core` - Core library, takes care of Spotify TCP session, audio file retrieval, decoding, audio output, playback queue, etc.
 - `/psst-gui` - GUI application built with [Druid](https://github.com/linebender/druid)
+- `/psst-cli` - Example CLI that plays a track.  Credentials need to be configured in the code.
 - `/psst-protocol` - Internal Protobuf definitions used for Spotify communication.
+
+##### Privacy Policy
+
+Psst connects only to the official Spotify servers, and does not call home. Cache of various things is stored locally, and can be deleted at any time. User credentials are not stored at all (re-usable authentication token from Spotify is used instead).
 
 ##### Thanks
 
@@ -116,8 +121,8 @@ This project would not exist without:
 
 - Big thank you to [`librespot`](https://github.com/librespot-org/librespot), the Open Source Spotify client library for Rust.  Most of `psst-core` is directly inspired by the ideas and code of `librespot`, although with a few differences:
     - Spotify Connect (remote control) is not supported yet.
-    - We're completely synchronous, without `tokio` or other `async` runtime.  I just don't understand the `async` jungle enough to port `librespot` from pre-async/await `tokio-0.1` code to anything both stable and modern.
-    - We're using HTTPS-based CDN audio file retrieval, similar to the official Web client or [`librespot-java`](https://github.com/librespot-org/librespot-java), instead of the older, channel-based approach in `librespot`.
+    - Psst is completely synchronous, without `tokio` or other `async` runtime, although it will probably change in the future.
+    - Psst is using HTTPS-based CDN audio file retrieval, similar to the official Web client or [`librespot-java`](https://github.com/librespot-org/librespot-java), instead of the channel-based approach in `librespot`.
 - [`druid`](https://github.com/linebender/druid) native GUI library for Rust.
-- [`aspotify`](https://github.com/KaiJewson/aspotify) asynchronous client library for the Spotify Web API.
 - [`ncspot`](https://github.com/hrkfdn/ncspot) cross-platform ncurses Spotify client written in Rust, using `librespot`.
+- ...and of course other libraries and projects.

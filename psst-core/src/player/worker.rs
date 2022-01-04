@@ -54,17 +54,24 @@ impl PlaybackManager {
             self.event_send.clone(),
         );
         self.current = Some((path, source.actor.sender()));
-        // Some output streams have different sample rate than the source, so we need to
-        // resample before pushing to the sink.
-        let source = ResampledSource::new(
-            source,
-            self.sink.sample_rate(),
-            ResamplingQuality::SincMediumQuality,
-        );
-        // Source output streams also have a different channel count. Map the stereo
-        // channels and silence the others.
-        let source = StereoMappedSource::new(source, self.sink.channel_count());
-        self.sink.play(source);
+        if source.sample_rate() == self.sink.sample_rate()
+            && source.channel_count() == self.sink.channel_count()
+        {
+            // We can start playing the source right away.
+            self.sink.play(source);
+        } else {
+            // Some output streams have different sample rate than the source, so we need to
+            // resample before pushing to the sink.
+            let source = ResampledSource::new(
+                source,
+                self.sink.sample_rate(),
+                ResamplingQuality::SincMediumQuality,
+            );
+            // Source output streams also have a different channel count. Map the stereo
+            // channels and silence the others.
+            let source = StereoMappedSource::new(source, self.sink.channel_count());
+            self.sink.play(source);
+        }
         self.sink.resume();
     }
 
@@ -206,11 +213,6 @@ impl AudioSource for DecoderSource {
             if self.event_send.try_send(PlayerEvent::EndOfTrack).is_ok() {
                 self.end_of_track = true;
             }
-            log::debug!(
-                "end of track, position: {}, total: {}",
-                position,
-                total_samples
-            );
         }
 
         written
@@ -282,6 +284,14 @@ impl Worker {
             .codec_params()
             .max_frames_per_packet
             .unwrap_or(DEFAULT_MAX_FRAMES);
+
+        // Promote the worker thread to audio priority to prevent buffer under-runs on
+        // high CPU usage.
+        if let Err(err) =
+            audio_thread_priority::promote_current_thread_to_real_time(0, input.signal_spec().rate)
+        {
+            log::warn!("failed to promote thread to audio priority: {}", err);
+        }
 
         Self {
             output_producer: output.producer(),
