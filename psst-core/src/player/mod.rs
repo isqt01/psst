@@ -213,7 +213,8 @@ impl Player {
     }
 
     fn load_and_play(&mut self, item: PlaybackItem) {
-        // Make sure to stop the sink, so any current audio source is cleared and the playback stopped.
+        // Make sure to stop the sink, so any current audio source is cleared and the
+        // playback stopped.
         self.audio_output_sink.stop();
 
         // Check if the item is already in the preloader state.
@@ -363,6 +364,7 @@ impl Player {
 
     fn stop(&mut self) {
         self.sender.send(PlayerEvent::Stopped).unwrap();
+        self.audio_output_sink.stop();
         self.state = PlayerState::Stopped;
         self.queue.clear();
         self.consecutive_loading_failures = 0;
