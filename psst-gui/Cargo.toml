@@ -7,6 +7,11 @@ build = "build.rs"
 description = "Fast Spotify client with native GUI"
 repository = "https://github.com/jpochyla/psst"
 
+[features]
+default = ["cpal"]
+cpal = ["psst-core/cpal"]
+cubeb = ["psst-core/cubeb"]
+
 [dependencies]
 psst-core = { path = "../psst-core" }
 
@@ -34,8 +39,8 @@ url = { version = "2.2.2" }
 druid = { git = "https://github.com/jpochyla/druid", branch = "psst", features = ["im", "image", "jpeg", "png", "serde"] }
 druid-enums = { git = "https://github.com/luleyleo/druid-enums" }
 druid-shell = { git = "https://github.com/jpochyla/druid", branch = "psst", features = ["raw-win-handle"] }
-open = { version = "2.1.1" }
-raw-window-handle = { version = "0.3.3" }  # Needs to be compatible with what druid is using.
+open = { version = "3.0.2" }
+raw-window-handle = { version = "0.4.2" }  # Needs to be compatible with what druid is using.
 souvlaki = { version = "0.5.1" }
 
 [target.'cfg(windows)'.build-dependencies]
