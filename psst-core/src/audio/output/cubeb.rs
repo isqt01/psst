@@ -55,6 +55,12 @@ struct Stream {
 
 impl Stream {
     fn open(callback_recv: Receiver<CallbackMsg>) -> Result<Self, Error> {
+        // Call CoInitialize() before any other calls to the API.
+        #[cfg(target_os = "windows")]
+        unsafe {
+            let _ = windows::Win32::System::Com::CoInitialize(0 as *mut _);
+        };
+
         let backend_name = env::var("CUBEB_BACKEND")
             .ok()
             .and_then(|s| CString::new(s).ok());

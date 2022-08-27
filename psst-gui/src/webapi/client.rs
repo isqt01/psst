@@ -149,8 +149,8 @@ impl WebApi {
         }
     }
 
-    /// Iterate a paginated result set by sending `request` with added pagination
-    /// parameters.  Mostly used through `load_all_pages`.
+    /// Iterate a paginated result set by sending `request` with added
+    /// pagination parameters.  Mostly used through `load_all_pages`.
     fn for_all_pages<T: DeserializeOwned + Clone>(
         &self,
         request: Request,
@@ -545,6 +545,22 @@ impl WebApi {
             .query("uris", track_uri);
         let result = self.send_empty_json(request)?;
         Ok(result)
+    }
+
+    // https://developer.spotify.com/documentation/web-api/reference/#/operations/remove-tracks-playlist
+    pub fn remove_track_from_playlist(
+        &self,
+        playlist_id: &str,
+        track_uri: &str,
+    ) -> Result<(), Error> {
+        self.delete(&format!("v1/playlists/{}/tracks", playlist_id))?
+            .send_json(ureq::json!({
+                "tracks": [{
+                    "uri": track_uri
+                }]
+            }))?;
+
+        Ok(())
     }
 }
 
