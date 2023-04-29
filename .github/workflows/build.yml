@@ -48,10 +48,6 @@ jobs:
       - name: Install Linux Dependencies
         if: ${{ runner.os == 'Linux' }}
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libssl-dev libasound2-dev
-    
-      - name: Install Linux Dependencies
-        run: sudo apt-get install -y libgtk-3-dev libssl-dev libasound2-dev
-        if: ${{ runner.os == 'Linux' }}
 
       # --check will error out with exit status 1 if code is not formatted properly. why even check when we just want the compiled program.
       # - name: Check Formatting
