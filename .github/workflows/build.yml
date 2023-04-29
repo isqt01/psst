@@ -48,33 +48,34 @@ jobs:
       - name: Install Linux Dependencies
         if: ${{ runner.os == 'Linux' }}
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libssl-dev libasound2-dev
-    - name: Install Linux Dependencies
-      run: sudo apt-get install -y libgtk-3-dev libssl-dev libasound2-dev
-      if: ${{ runner.os == 'Linux' }}
+    
+      - name: Install Linux Dependencies
+        run: sudo apt-get install -y libgtk-3-dev libssl-dev libasound2-dev
+        if: ${{ runner.os == 'Linux' }}
 
-    # --check will error out with exit status 1 if code is not formatted properly. why even check when we just want the compiled program.
-    # - name: Check Formatting
-    #   run: cargo fmt --all -- --check
+      # --check will error out with exit status 1 if code is not formatted properly. why even check when we just want the compiled program.
+      # - name: Check Formatting
+      #   run: cargo fmt --all -- --check
 
-    # - name: Run Tests
-    #   run: cargo test
-    #   continue-on-error: true
+      # - name: Run Tests
+      #   run: cargo test
+      #   continue-on-error: true
 
-    - name: Build Release
-      run: cargo build --release
+      - name: Build Release
+        run: cargo build --release
 
-    - name: Bundle macOS Release
-      run: |
-        cargo install cargo-bundle
-        cargo bundle --release
-      working-directory: psst-gui
-      if: ${{ runner.os == 'macOS' }}
-  
-    - name: Create .dmg File
-      run: |
-        hdiutil create Psst-uncompressed.dmg -volname "Psst" -srcfolder target/release/bundle/osx
-        hdiutil convert Psst-uncompressed.dmg -format UDZO -o Psst-x64.dmg
-      if: ${{ runner.os == 'macOS' }}
+      - name: Bundle macOS Release
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          cargo install cargo-bundle
+          cargo bundle --release
+        working-directory: psst-gui
+    
+      - name: Create macOS Disk Image
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          hdiutil create Psst-uncompressed.dmg -volname "Psst" -srcfolder target/release/bundle/osx
+          hdiutil convert Psst-uncompressed.dmg -format UDZO -o Psst-x64.dmg
 
       - name: Make Linux Binary Executable
         if: ${{ runner.os == 'Linux' }}
