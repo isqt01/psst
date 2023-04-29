@@ -30,8 +30,8 @@ pub use theme::ThemeScope;
 pub use utils::{Border, Clip, FadeOut, Logger};
 
 use crate::{
-    controller::{ExClick, OnCommand, OnCommandAsync, OnDebounce, OnUpdate},
-    data::AppState,
+    controller::{ExClick, ExScroll, OnCommand, OnCommandAsync, OnDebounce, OnUpdate},
+    data::{AppState, SliderScrollScale},
 };
 
 pub trait MyWidgetExt<T: Data>: Widget<T> + Sized + 'static {
@@ -81,6 +81,14 @@ pub trait MyWidgetExt<T: Data>: Widget<T> + Sized + 'static {
         ControllerHost::new(self, ExClick::new(Some(MouseButton::Right), func))
     }
 
+    fn on_scroll(
+        self,
+        scale_picker: impl Fn(&mut T) -> &SliderScrollScale + 'static,
+        action: impl Fn(&mut EventCtx, &mut T, &Env, f64) + 'static,
+    ) -> ControllerHost<Self, ExScroll<T>> {
+        ControllerHost::new(self, ExScroll::new(scale_picker, action))
+    }
+
     fn on_command<U, F>(
         self,
         selector: Selector<U>,
@@ -115,6 +123,15 @@ pub trait MyWidgetExt<T: Data>: Widget<T> + Sized + 'static {
     ) -> ControllerHost<Self, ExClick<T>> {
         self.on_right_click(move |ctx, event, data, _env| {
             ctx.show_context_menu(func(data), event.window_pos);
+        })
+    }
+
+    fn static_context_menu(
+        self,
+        func: impl Fn() -> Menu<AppState> + 'static,
+    ) -> ControllerHost<Self, ExClick<T>> {
+        self.on_right_click(move |ctx, event, _data, _env| {
+            ctx.show_context_menu(func(), event.window_pos);
         })
     }
 }

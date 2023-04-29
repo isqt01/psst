@@ -1,3 +1,4 @@
+use std::io::{BufReader, BufWriter};
 use std::{env, env::VarError, fs::File, path::PathBuf};
 
 use std::fs::OpenOptions;
@@ -16,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ui::theme;
 
-use super::{Nav, Promise, QueueBehavior};
+use super::{Nav, Promise, QueueBehavior, SliderScrollScale};
 
 #[derive(Clone, Debug, Data, Lens)]
 pub struct Preferences {
@@ -65,6 +66,11 @@ impl Authentication {
         let connection = SessionConnection::open(config).map_err(|err| err.to_string())?;
         Ok(connection.credentials)
     }
+
+    pub fn clear(&mut self) {
+        self.username.clear();
+        self.password.clear();
+    }
 }
 
 const APP_NAME: &str = "Psst";
@@ -83,6 +89,9 @@ pub struct Config {
     pub queue_behavior: QueueBehavior,
     pub show_track_cover: bool,
     pub window_size: Size,
+    pub slider_scroll_scale: SliderScrollScale,
+    pub sort_order: SortOrder,
+    pub sort_criteria: SortCriteria,
 }
 
 impl Default for Config {
@@ -96,6 +105,9 @@ impl Default for Config {
             queue_behavior: Default::default(),
             show_track_cover: Default::default(),
             window_size: Size::new(theme::grid(80.0), theme::grid(100.0)),
+            slider_scroll_scale: Default::default(),
+            sort_order: Default::default(),
+            sort_criteria: Default::default(),
         }
     }
 }
@@ -130,7 +142,8 @@ impl Config {
         let path = Self::config_path().expect("Failed to get config path");
         if let Ok(file) = File::open(&path) {
             log::info!("loading config: {:?}", &path);
-            Some(serde_json::from_reader(file).expect("Failed to read config"))
+            let reader = BufReader::new(file);
+            Some(serde_json::from_reader(reader).expect("Failed to read config"))
         } else {
             None
         }
@@ -147,8 +160,9 @@ impl Config {
         options.mode(0o600);
 
         let file = options.open(&path).expect("Failed to create config");
+        let writer = BufWriter::new(file);
 
-        serde_json::to_writer_pretty(file, self).expect("Failed to write config");
+        serde_json::to_writer_pretty(writer, self).expect("Failed to write config");
         log::info!("saved config: {:?}", &path);
     }
 
@@ -228,5 +242,30 @@ pub enum Theme {
 impl Default for Theme {
     fn default() -> Self {
         Self::Light
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Data, Serialize, Deserialize)]
+pub enum SortOrder {
+    Ascending,
+    Descending,
+}
+impl Default for SortOrder {
+    fn default() -> Self {
+        Self::Ascending
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Data, Serialize, Deserialize)]
+pub enum SortCriteria {
+    Title,
+    Artist,
+    Album,
+    Duration,
+    DateAdded,
+}
+impl Default for SortCriteria {
+    fn default() -> Self {
+        Self::DateAdded
     }
 }

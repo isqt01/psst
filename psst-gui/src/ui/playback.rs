@@ -311,7 +311,7 @@ where
         let total = Size::new(max.width, player.height.max(item.height));
 
         // Put the item to the top left.
-        self.item.set_origin(ctx, data, env, Point::ORIGIN);
+        self.item.set_origin(ctx, Point::ORIGIN);
 
         // Put the player either to the center or to the right.
         let player_pos = if player_centered {
@@ -325,7 +325,7 @@ where
                 total.height * 0.5 - player.height * 0.5,
             )
         };
-        self.player.set_origin(ctx, data, env, player_pos);
+        self.player.set_origin(ctx, player_pos);
 
         total
     }
@@ -498,9 +498,9 @@ fn paint_audio_analysis(ctx: &mut PaintCtx, data: &NowPlaying, path: &BezPath, e
     };
 
     ctx.with_save(|ctx| {
-        ctx.fill(&path, &remaining_color);
-        ctx.clip(&elapsed);
-        ctx.fill(&path, &elapsed_color);
+        ctx.fill(path, &remaining_color);
+        ctx.clip(elapsed);
+        ctx.fill(path, &elapsed_color);
     });
 }
 
@@ -522,11 +522,11 @@ fn paint_progress_bar(ctx: &mut PaintCtx, data: &NowPlaying, env: &Env) {
     let remaining = Size::new(remaining_width, bounds.height).round();
 
     ctx.fill(
-        &Rect::from_origin_size(Point::ORIGIN, elapsed),
+        Rect::from_origin_size(Point::ORIGIN, elapsed),
         &elapsed_color,
     );
     ctx.fill(
-        &Rect::from_origin_size(Point::new(elapsed.width, 0.0), remaining),
+        Rect::from_origin_size(Point::new(elapsed.width, 0.0), remaining),
         &remaining_color,
     );
 }
