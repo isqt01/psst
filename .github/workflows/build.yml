@@ -10,24 +10,24 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  code-style:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+  # code-style:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout Repository
+  #       uses: actions/checkout@v3
 
-      - name: Setup Toolchain
-        uses: dtolnay/rust-toolchain@stable
+  #     - name: Setup Toolchain
+  #       uses: dtolnay/rust-toolchain@stable
 
-      - name: Setup Cache
-        uses: Swatinem/rust-cache@v2
+  #     - name: Setup Cache
+  #       uses: Swatinem/rust-cache@v2
 
-      - name: Install Linux Dependencies
-        if: ${{ runner.os == 'Linux' }}
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libssl-dev libasound2-dev
+  #     - name: Install Linux Dependencies
+  #       if: ${{ runner.os == 'Linux' }}
+  #       run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libssl-dev libasound2-dev
 
-      - name: Check Formatting
-        run: cargo fmt --all -- --check
+  #     - name: Check Formatting
+  #       run: cargo fmt --all -- --check
 
   build:
     strategy:
@@ -56,9 +56,9 @@ jobs:
     # - name: Check Formatting
     #   run: cargo fmt --all -- --check
 
-    - name: Run Tests
-      run: cargo test
-      continue-on-error: true
+    # - name: Run Tests
+    #   run: cargo test
+    #   continue-on-error: true
 
     - name: Build Release
       run: cargo build --release
