@@ -3,6 +3,9 @@ use druid::{
 };
 use threadpool::ThreadPool;
 
+use crate::ui::playlist::{
+    RENAME_PLAYLIST, RENAME_PLAYLIST_CONFIRM, UNFOLLOW_PLAYLIST, UNFOLLOW_PLAYLIST_CONFIRM,
+};
 use crate::{
     cmd,
     data::{AppState, Config},
@@ -15,6 +18,7 @@ pub struct Delegate {
     main_window: Option<WindowId>,
     preferences_window: Option<WindowId>,
     image_pool: ThreadPool,
+    size_updated: bool,
 }
 
 impl Delegate {
@@ -25,6 +29,7 @@ impl Delegate {
             main_window: None,
             preferences_window: None,
             image_pool: ThreadPool::with_name("image_loading".into(), MAX_IMAGE_THREADS),
+            size_updated: false,
         }
     }
 
@@ -112,6 +117,12 @@ impl AppDelegate<AppState> for Delegate {
             Handled::Yes
         } else if let Handled::Yes = self.command_image(ctx, target, cmd, data) {
             Handled::Yes
+        } else if let Some(link) = cmd.get(UNFOLLOW_PLAYLIST_CONFIRM) {
+            ctx.submit_command(UNFOLLOW_PLAYLIST.with(link.clone()));
+            Handled::Yes
+        } else if let Some(link) = cmd.get(RENAME_PLAYLIST_CONFIRM) {
+            ctx.submit_command(RENAME_PLAYLIST.with(link.clone()));
+            Handled::Yes
         } else {
             Handled::No
         }
@@ -139,13 +150,20 @@ impl AppDelegate<AppState> for Delegate {
     fn event(
         &mut self,
         _ctx: &mut DelegateCtx,
-        _window_id: WindowId,
+        window_id: WindowId,
         event: Event,
         data: &mut AppState,
         _env: &Env,
     ) -> Option<Event> {
-        if let Event::WindowSize(size) = event {
-            data.config.window_size = size;
+        if self.main_window == Some(window_id) {
+            if let Event::WindowSize(size) = event {
+                // This is a little hacky, but without it, the window will slowly get smaller each time the application is opened.
+                if !self.size_updated {
+                    self.size_updated = true;
+                } else {
+                    data.config.window_size = size;
+                }
+            }
         }
         Some(event)
     }

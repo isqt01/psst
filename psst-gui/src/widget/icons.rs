@@ -136,6 +136,24 @@ pub static PODCAST: SvgIcon = SvgIcon {
     svg_size: Size::new(22.0, 22.0),
     op: PaintOp::Fill,
 };
+// Bootstrap - explicit-fill
+pub static EXPLICIT: SvgIcon = SvgIcon {
+    svg_path: "M3.75 0A3.75 3.75 0 0 0 0 3.75v16.5A3.75 3.75 0 0 0 3.75 24h16.5A3.75 3.75 0 0 0 24 20.25V3.75A3.75 3.75 0 0 0 20.25 0Zm6.49 16.32h5.51V18h-7.5V6h7.5v1.68h-5.51v3.42h5.18v1.6h-5.18v3.62z",
+    svg_size: Size::new(24.0, 24.0),
+    op: PaintOp::Fill,
+};
+// Font Awesome - heart solid
+pub static HEART_SOLID: SvgIcon = SvgIcon {
+    svg_path: "M12 2.1c6.66-7.3 23.3 5.48 0 21.9C-11.3 7.58 5.34-5.2 12 2.1z",
+    svg_size: Size::new(24.0, 24.0),
+    op: PaintOp::Fill,
+};
+// Font Awesome - heart regular
+pub static HEART_OUTLINE: SvgIcon = SvgIcon {
+    svg_path: "m12 4.4-1.08-1.18C8.4.45 3.77 1.4 2.1 4.88c-.78 1.64-.96 4 .47 7.02 1.38 2.9 4.25 6.38 9.43 10.17 5.18-3.79 8.05-7.27 9.43-10.17 1.43-3.02 1.26-5.38.47-7.02-1.67-3.48-6.3-4.43-8.82-1.66ZM12 24C-11 7.79 4.92-4.86 11.74 1.83l.26.27a4.68 5 0 0 1 .26-.27C19.08-4.87 35 7.79 12 24z",
+    svg_size: Size::new(24.0, 24.0),
+    op: PaintOp::Fill,
+};
 
 #[derive(Copy, Clone)]
 pub enum PaintOp {

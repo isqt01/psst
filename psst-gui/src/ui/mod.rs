@@ -6,7 +6,9 @@ use druid::{
     widget::{CrossAxisAlignment, Either, Flex, Label, List, Scroll, Slider, Split, ViewSwitcher},
     Color, Env, Insets, Key, LensExt, Menu, MenuItem, Selector, Widget, WidgetExt, WindowDesc,
 };
+use druid_shell::Cursor;
 
+use crate::data::config::SortCriteria;
 use crate::{
     cmd,
     controller::{AfterDelay, NavController, SessionController, SortController},
@@ -40,7 +42,7 @@ pub mod utils;
 pub fn main_window(config: &Config) -> WindowDesc<AppState> {
     let win = WindowDesc::new(root_widget())
         .title(compute_main_window_title)
-        .with_min_size((theme::grid(65.0), theme::grid(25.0)))
+        .with_min_size((theme::grid(65.0), theme::grid(50.0)))
         .window_size(config.window_size)
         .show_title(false)
         .transparent_titlebar(true);
@@ -52,7 +54,7 @@ pub fn main_window(config: &Config) -> WindowDesc<AppState> {
 }
 
 pub fn preferences_window() -> WindowDesc<AppState> {
-    let win_size = (theme::grid(50.0), theme::grid(45.0));
+    let win_size = (theme::grid(50.0), theme::grid(55.0));
 
     // On Windows, the window size includes the titlebar.
     let win_size = if cfg!(target_os = "windows") {
@@ -109,21 +111,32 @@ fn root_widget() -> impl Widget<AppState> {
     let playlists = Scroll::new(playlist::list_widget())
         .vertical()
         .expand_height();
-    let sidebar = Flex::column()
+
+    let playlists = Flex::column()
         .must_fill_main_axis(true)
         .with_child(sidebar_logo_widget())
         .with_child(sidebar_menu_widget())
         .with_default_spacer()
         .with_flex_child(playlists, 1.0)
-        .with_child(volume_slider())
-        .with_default_spacer()
-        .with_child(user::user_widget())
         .padding(if cfg!(target_os = "macos") {
             // Accommodate the window controls on Mac.
             Insets::new(0.0, 24.0, 0.0, 0.0)
         } else {
             Insets::ZERO
-        })
+        });
+
+    let controls = Flex::column()
+        .with_default_spacer()
+        .with_child(volume_slider())
+        .with_default_spacer()
+        .with_child(user::user_widget())
+        .center()
+        .fix_height(100.0)
+        .background(Border::Top.with_color(theme::GREY_500));
+
+    let sidebar = Flex::column()
+        .with_flex_child(playlists, 1.0)
+        .with_child(controls)
         .background(theme::BACKGROUND_DARK);
 
     let topbar = Flex::row()
@@ -301,7 +314,7 @@ fn sidebar_link_widget(title: &str, link_nav: Nav) -> impl Widget<AppState> {
                 );
             }
         })
-        .on_click(move |ctx, _, _| {
+        .on_left_click(move |ctx, _, _, _| {
             ctx.submit_command(cmd::NAVIGATE.with(link_nav.clone()));
         })
         .lens(AppState::nav)
@@ -326,7 +339,8 @@ fn volume_slider() -> impl Widget<AppState> {
                     env.set(theme::BASIC_WIDGET_HEIGHT, theme::grid(1.5));
                     env.set(theme::FOREGROUND_LIGHT, env.get(theme::GREY_400));
                     env.set(theme::FOREGROUND_DARK, env.get(theme::GREY_400));
-                }),
+                })
+                .with_cursor(Cursor::Pointer),
         )
         .padding((theme::grid(1.5), 0.0))
         .on_debounce(SAVE_DELAY, |ctx, _, _| ctx.submit_command(SAVE_TO_CONFIG))
@@ -351,27 +365,23 @@ fn topbar_sort_widget() -> impl Widget<AppState> {
         .padding(theme::grid(1.0))
         .link()
         .rounded(theme::BUTTON_BORDER_RADIUS)
-        .on_click(|ctx, _, _| {
+        .on_left_click(|ctx, _, _, _| {
             ctx.submit_command(cmd::TOGGLE_SORT_ORDER);
         })
-        .static_context_menu(sorting_menu);
+        .context_menu(sorting_menu);
 
     let descending_icon = down_icon
         .padding(theme::grid(1.0))
         .link()
         .rounded(theme::BUTTON_BORDER_RADIUS)
-        .on_click(|ctx, _, _| {
+        .on_left_click(|ctx, _, _, _| {
             ctx.submit_command(cmd::TOGGLE_SORT_ORDER);
         })
-        .static_context_menu(sorting_menu);
+        .context_menu(sorting_menu);
     let enabled = Either::new(
         |data: &AppState, _| {
             // check if the current nav is PlaylistDetail
-            if data.config.sort_order == SortOrder::Ascending {
-                true
-            } else {
-                false
-            }
+            data.config.sort_order == SortOrder::Ascending
         },
         ascending_icon,
         descending_icon,
@@ -383,11 +393,7 @@ fn topbar_sort_widget() -> impl Widget<AppState> {
     Either::new(
         |nav: &AppState, _| {
             // check if the current nav is PlaylistDetail
-            if let Nav::PlaylistDetail(_) = nav.nav {
-                true
-            } else {
-                false
-            }
+            matches!(nav.nav, Nav::PlaylistDetail(_))
         },
         enabled,
         disabled,
@@ -405,7 +411,7 @@ fn topbar_back_button_widget() -> impl Widget<AppState> {
         .padding(theme::grid(1.0))
         .link()
         .rounded(theme::BUTTON_BORDER_RADIUS)
-        .on_click(|ctx, _, _| {
+        .on_left_click(|ctx, _, _, _| {
             ctx.submit_command(cmd::NAVIGATE_BACK.with(1));
         })
         .context_menu(history_menu);
@@ -432,24 +438,31 @@ fn history_menu(history: &Vector<Nav>) -> Menu<AppState> {
     menu
 }
 
-fn sorting_menu() -> Menu<AppState> {
+fn sorting_menu(app_state: &AppState) -> Menu<AppState> {
     let mut menu = Menu::new("Sort by");
 
     // Create menu items for sorting options
-    let sort_by_title = MenuItem::new("Title").command(cmd::SORT_BY_TITLE);
-    let sort_by_date = MenuItem::new("Date added").command(cmd::SORT_BY_DATE_ADDED);
-    let sort_by_duration = MenuItem::new("Duration").command(cmd::SORT_BY_DURATION);
+    let mut sort_by_title = MenuItem::new("Title").command(cmd::SORT_BY_TITLE);
+    let mut sort_by_album = MenuItem::new("Album").command(cmd::SORT_BY_ALBUM);
+    let mut sort_by_date_added = MenuItem::new("Date Added").command(cmd::SORT_BY_DATE_ADDED);
+    let mut sort_by_duration = MenuItem::new("Duration").command(cmd::SORT_BY_DURATION);
+    let mut sort_by_artist = MenuItem::new("Artist").command(cmd::SORT_BY_ARTIST);
 
-    let sort_by_album = MenuItem::new("Album").command(cmd::SORT_BY_ALBUM);
-
-    let sort_by_artist = MenuItem::new("Artist").command(cmd::SORT_BY_ARTIST);
+    match app_state.config.sort_criteria {
+        SortCriteria::Title => sort_by_title = sort_by_title.selected(true),
+        SortCriteria::Album => sort_by_album = sort_by_album.selected(true),
+        SortCriteria::DateAdded => sort_by_date_added = sort_by_date_added.selected(true),
+        SortCriteria::Duration => sort_by_duration = sort_by_duration.selected(true),
+        SortCriteria::Artist => sort_by_artist = sort_by_artist.selected(true),
+    };
 
     // Add the items and checkboxes to the menu
     menu = menu.entry(sort_by_album);
     menu = menu.entry(sort_by_artist);
-    menu = menu.entry(sort_by_date);
+    menu = menu.entry(sort_by_date_added);
     menu = menu.entry(sort_by_duration);
     menu = menu.entry(sort_by_title);
+
     menu
 }
 
